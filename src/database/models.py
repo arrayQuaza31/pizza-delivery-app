@@ -1,13 +1,18 @@
-from enum import Enum
-from db_helpers.database import Base
 from sqlalchemy import Column, Integer, String, Text, Boolean, ForeignKey
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import declarative_base, relationship
+from sqlalchemy.dialects.postgresql import UUID, TIMESTAMP
 from sqlalchemy_utils import ChoiceType
+from enum import Enum
+import uuid
+from datetime import datetime
 
+Base = declarative_base()
+
+# ----------
 
 class User(Base):
     __tablename__ = 'users'
-    id = Column(Integer, primary_key=True)
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     username = Column(String(20), unique=True, nullable=False)
     email = Column(String(100), unique=True)
     password = Column(Text, nullable=False)
@@ -33,11 +38,12 @@ class PizzaSizes(Enum):
 
 class Order(Base):
     __tablename__ = 'orders'
-    id = Column(Integer, primary_key=True)
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4())
     quantity = Column(Integer, nullable=False)
     order_status = Column(ChoiceType(choices=OrderStatuses, impl=String()), default=OrderStatuses.PENDING)
     pizza_size = Column(ChoiceType(choices=PizzaSizes, impl=String()), default=PizzaSizes.SMALL)
-    user_id = Column(Integer, ForeignKey(column='users.id'))
+    user_id = Column(UUID(as_uuid=True), ForeignKey(column='users.id'))
+    time_of_order = Column(TIMESTAMP(timezone=True), default=datetime.now)
     user = relationship('User', back_populates='orders')  # orders relation under User class (many to one)
 
     def __repr__(self):
