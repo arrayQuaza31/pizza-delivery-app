@@ -10,7 +10,7 @@ class UserServices:
     async def create_user(self, session: AsyncSession, user: SignUpModel) -> str:
         if await self.get_user(session=session, where_filter={"username": user.username}):
             return "USERNAME TAKEN"
-        if await self.get_user(session=session, where_filter={"email": user.email}):
+        if user.email and await self.get_user(session=session, where_filter={"email": user.email}):
             return "DUPLICATE ACCOUNT"
         new_user = User(**user.model_dump(exclude={"password"}), password=generate_password_hash(user.password))
         session.add(new_user)
@@ -35,7 +35,10 @@ class UserServices:
         existing_user = await self.get_user(session=session, where_filter={"username": update_data.username})
         if not existing_user:
             return None
+        # print("Data to be Updated -->", update_data.model_dump())
         for field, value in update_data.model_dump(exclude={"username"}).items():
+            if not value:
+                continue
             if field == "password":
                 value = generate_password_hash(value)
             setattr(existing_user, field, value)

@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Text, Boolean, ForeignKey
+from sqlalchemy import Column, Integer, String, Boolean, ForeignKey
 from sqlalchemy.orm import declarative_base, relationship
 from sqlalchemy.dialects.postgresql import UUID, TIMESTAMP
 from sqlalchemy_utils import ChoiceType
@@ -8,17 +8,20 @@ from datetime import datetime, timezone
 
 Base = declarative_base()
 
-# ----------
+# -------------------------
+# ----- User Schemas -----
 
 
 class User(Base):
     __tablename__ = "users"
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     username = Column(String(20), unique=True, nullable=False)
-    email = Column(String(100), unique=True)
-    password = Column(Text, nullable=False)
+    email = Column(String(254), unique=True)
+    password = Column(String(100), nullable=False)
     is_staff = Column(Boolean, default=False)
+    is_verified = Column(Boolean, default=False)
     is_active = Column(Boolean, default=True)
+    created_at = Column(TIMESTAMP(timezone=True), default=lambda: datetime.now(timezone.utc))
     orders = relationship(
         "Order",
         back_populates="user",
@@ -29,7 +32,8 @@ class User(Base):
         return f"<User {self.username}>"
 
 
-# ----------
+# -------------------------
+# ----- Order Schemas -----
 
 
 class OrderStatuses(Enum):
