@@ -1,8 +1,8 @@
 from fastapi import FastAPI
 from contextlib import asynccontextmanager
 # from fastapi_jwt_auth import AuthJWT
-from api.auth_routers.auth_routes import auth_router
-from api.order_routers.order_routes import order_router
+from api.user_routes import user_router
+from api.order_routes import order_router
 # from api.models import Settings
 from database.init_db import init_db_models
 
@@ -26,5 +26,5 @@ app = FastAPI(
 #     return Settings()
 
 version = 'v1'
-app.include_router(router=auth_router, prefix=f'/api/{version}/auth', tags=['auth'])
+app.include_router(router=user_router, prefix=f'/api/{version}/auth', tags=['auth'])
 app.include_router(router=order_router, prefix=f'/api/{version}/orders', tags=['orders'])
