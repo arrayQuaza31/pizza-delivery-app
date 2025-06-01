@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, status
 from fastapi.exceptions import HTTPException
 # from fastapi_jwt_auth import AuthJWT
 from sqlalchemy.ext.asyncio import AsyncSession
-from api.models import SignUpModel, LoginModel
+from api.models import SignUpModel, LoginModel, UpdateModel, DeleteModel
 from database.db_session import get_db_session
 from database.models import User
 from utils.password_helper import verify_password
@@ -19,7 +19,7 @@ async def hello():
 
 @user_router.post('/signup', status_code=status.HTTP_201_CREATED)
 async def signup(user: SignUpModel, session: AsyncSession = Depends(get_db_session)):
-    message = await USER_SRV.create_user(user=user, session=session)
+    message = await USER_SRV.create_user(session=session, user=user)
     if message == "USERNAME TAKEN":
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, 
@@ -41,3 +41,23 @@ async def login(user: LoginModel, session: AsyncSession = Depends(get_db_session
         status_code=status.HTTP_401_UNAUTHORIZED, 
         detail='Invalid username or password. Please provide the correct credentials and try again.'
     )
+
+@user_router.put('/account/update', status_code=status.HTTP_200_OK)
+async def update_account_details(user: UpdateModel, session: AsyncSession = Depends(get_db_session)):
+    updated_account = await USER_SRV.update_user(session=session, update_data=user)
+    if not updated_account:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, 
+            detail=f'No account with username \'{user.username}\' exists!'
+        )
+    return {"message": f"Hi {user.username}, your details have been updated!"}
+
+@user_router.delete('/account/delete', status_code=status.HTTP_200_OK)
+async def delete_account(user: DeleteModel, session: AsyncSession = Depends(get_db_session)):
+    deleted_account = await USER_SRV.delete_user(session=session, username=user.username)
+    if not deleted_account:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, 
+            detail=f'No account with username \'{user.username}\' exists!'
+        )
+    return {"message": "Your account has been deleted!"}

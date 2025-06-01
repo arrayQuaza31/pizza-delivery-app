@@ -6,7 +6,7 @@ from utils.password_helper import generate_password_hash
 from utils.query_builder import build_select_query
 
 class UserServices:
-    async def create_user(self, user: SignUpModel, session: AsyncSession) -> str:
+    async def create_user(self, session: AsyncSession, user: SignUpModel) -> str:
         if await self.get_user(session=session, where_filter={'username': user.username}):
             return "USERNAME TAKEN"
         if await self.get_user(session=session, where_filter={'email': user.email}):
@@ -41,7 +41,7 @@ class UserServices:
         db_users = result.scalars().all()
         return db_users
 
-    async def update_user(self, update_data: UpdateModel, session: AsyncSession) -> Optional[User]:
+    async def update_user(self, session: AsyncSession, update_data: UpdateModel) -> Optional[User]:
         existing_user = await self.get_user(session=session, where_filter={'username': update_data.username})
         if not existing_user:
             return None
@@ -51,9 +51,10 @@ class UserServices:
         await session.commit()
         return existing_user
 
-    async def delete_user(self, username: str, session: AsyncSession):
+    async def delete_user(self, session: AsyncSession, username: str) -> bool:
         existing_user = await self.get_user(session=session, where_filter={'username': username})
         if not existing_user:
-            return None
+            return False
         await session.delete(existing_user)
         await session.commit()
+        return True

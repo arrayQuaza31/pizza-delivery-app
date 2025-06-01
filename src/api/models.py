@@ -28,8 +28,8 @@ class LoginModel(BaseModel):
         from_attributes=True
         json_schema_extra = {
             'example': {
-                'username': '<your username>', 
-                'password': '<your password>'
+                'username': 'johndoe', 
+                'password': 'password'
             }
         }
 
@@ -41,8 +41,19 @@ class UpdateModel(BaseModel):
         from_attributes=True
         json_schema_extra = {
             'example': {
-                'email': '<your email> - if you want to update your tagged email', 
-                'password': '<your password> - if you want to update your account password'
+                'username': 'johndoe', 
+                'email': 'johndoe@email.com (if you want to update your tagged email)', 
+                'password': 'password (if you want to update your account password)'
+            }
+        }
+
+class DeleteModel(BaseModel):
+    username: str
+    class Config:
+        from_attributes=True
+        json_schema_extra = {
+            'example': {
+                'username': 'johndoe'
             }
         }
 
