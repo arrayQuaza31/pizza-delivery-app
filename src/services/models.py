@@ -3,6 +3,7 @@ import uuid
 from datetime import datetime
 from typing import Optional
 
+
 class NewUserModel(BaseModel):
     id: uuid.UUID
     username: str
@@ -11,10 +12,12 @@ class NewUserModel(BaseModel):
     is_staff: bool
     is_active: bool
 
+
 class UserUpdateModel(BaseModel):
     username: Optional[str]
     email: Optional[str]
     password: Optional[str]
+
 
 class NewOrderModel(BaseModel):
     id: uuid.UUID

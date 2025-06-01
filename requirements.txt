@@ -1,3 +1,4 @@
+black==25.1.0
 fastapi==0.115.12
 fastapi-jwt-auth==0.5.0
 uvicorn==0.34.2

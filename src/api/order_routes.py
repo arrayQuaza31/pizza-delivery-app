@@ -2,6 +2,7 @@ from fastapi import APIRouter
 
 order_router = APIRouter()
 
-@order_router.get('/')
+
+@order_router.get("/")
 async def hello():
-    return {'message': 'Hello from orders'}
+    return {"message": "Hello from orders"}
