@@ -8,11 +8,34 @@ from datetime import datetime, timezone
 
 Base = declarative_base()
 
-# -------------------------
+# ----------------------------
+# ----- Serializer Class -----
+
+
+class CustomSerializerMixin:
+    def to_dict(self, include: set[str] = set(), exclude: set[str] = set()):
+        result = {}
+        for column in self.__table__.columns:
+            if (include and column.name not in include) or (column.name in exclude):
+                continue
+            column_name = column.name
+            column_value = getattr(self, column_name)
+            if isinstance(column_value, uuid.UUID):
+                result[column_name] = str(column_value)
+            elif isinstance(column_value, datetime):
+                result[column_name] = column_value.isoformat()
+            elif isinstance(column_value, Enum):
+                result[column_name] = column_value.value
+            else:
+                result[column_name] = column_value
+        return result
+
+
+# ------------------------
 # ----- User Schemas -----
 
 
-class User(Base):
+class User(Base, CustomSerializerMixin):
     __tablename__ = "users"
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     username = Column(String(20), unique=True, nullable=False)
@@ -51,7 +74,7 @@ class PizzaSizes(Enum):
     EXTRA_LARGE = "extra-large"
 
 
-class Order(Base):
+class Order(Base, CustomSerializerMixin):
     __tablename__ = "orders"
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     quantity = Column(Integer, nullable=False)

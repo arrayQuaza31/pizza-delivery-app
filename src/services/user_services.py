@@ -23,7 +23,7 @@ class UserServices:
         return db_user
 
     async def get_multiple_users(
-        self, session: AsyncSession, where_filter: dict = {}, order_by_cols: list[dict] = []
+        self, session: AsyncSession, where_filter: dict = {}, order_by_cols: list[tuple] = []
     ) -> list[User]:
         result = await session.execute(
             build_select_query(model=User, where_filter=where_filter, order_by_cols=order_by_cols)

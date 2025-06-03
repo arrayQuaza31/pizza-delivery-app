@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Depends, status
 from fastapi.exceptions import HTTPException
 
-# from fastapi_jwt_auth import AuthJWT
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from api.models import SignUpModel, LoginModel, UpdateModel, DeleteModel
 from database.db_session import get_db_session
 from database.models import User
@@ -67,3 +67,10 @@ async def delete_account(user: DeleteModel, session: AsyncSession = Depends(get_
             detail=f"No account with username '{user.username}' exists!",
         )
     return {"message": "Your account has been deleted!"}
+
+
+@user_router.get("/list/users", status_code=status.HTTP_200_OK)
+async def list_multiple_users(session: AsyncSession = Depends(get_db_session)):
+    users = await USER_SRV.get_multiple_users(session=session, order_by_cols=[("created_at", 1)])
+    users_serialized = [*(user.to_dict(exclude={"password"}) for user in users)]
+    return users_serialized
