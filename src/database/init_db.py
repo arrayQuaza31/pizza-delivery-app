@@ -1,8 +1,17 @@
+from sqlalchemy import URL
 from sqlalchemy.ext.asyncio import create_async_engine
 from config_loader import Config
 from database.models import Base
 
-database_url = f"postgresql+psycopg://{Config.POSTGRES_USERNAME}:{Config.POSTGRES_PASSWORD}@{Config.POSTGRES_HOST}:{Config.POSTGRES_PORT}/{Config.POSTGRES_DBNAME}"
+
+database_url = URL.create(
+    drivername="postgresql+psycopg",
+    username=Config.POSTGRES_USERNAME,
+    password=Config.POSTGRES_PASSWORD,
+    host=Config.POSTGRES_HOST,
+    port=Config.POSTGRES_PORT,
+    database=Config.POSTGRES_DBNAME,
+)
 
 engine = create_async_engine(url=database_url, echo=True)
 

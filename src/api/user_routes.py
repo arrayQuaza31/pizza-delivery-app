@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from api.models import SignUpModel, LoginModel, UpdateModel, DeleteModel
 from database.db_session import get_db_session
 from database.models import User
-from utils.password_helper import verify_password
+from utils.auth_utils import verify_password, create_token, decode_token
 from services.user_services import UserServices
 
 
@@ -40,7 +40,15 @@ async def signup(user: SignUpModel, session: AsyncSession = Depends(get_db_sessi
 async def login(user: LoginModel, session: AsyncSession = Depends(get_db_session)):
     db_user = await USER_SRV.get_user(session=session, where_filter={"username": user.username})
     if db_user and verify_password(user.password, db_user.password):
-        return {"message": f"Welcome {db_user.username}!"}
+        user_data = db_user.to_dict(include={"id", "username"})
+        access_token = create_token(user_data=user_data)
+        refresh_token = create_token(user_data=user_data, refresh_token_flag=True)
+        return {
+            "message": f"Welcome {db_user.username}!",
+            "access_token": access_token,
+            "refresh_token": refresh_token,
+            "user_data": user_data,
+        }
     raise HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Invalid username or password. Please provide the correct credentials and try again.",

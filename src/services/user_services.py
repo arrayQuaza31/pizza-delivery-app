@@ -2,7 +2,7 @@ from typing import Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from database.models import User
 from api.models import SignUpModel, UpdateModel
-from utils.password_helper import generate_password_hash
+from utils.auth_utils import generate_password_hash
 from utils.query_builder import build_select_query
 
 
