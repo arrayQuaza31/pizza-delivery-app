@@ -1,8 +1,11 @@
+from typing import Optional
 from passlib.context import CryptContext
 import jwt
 from jwt.exceptions import PyJWTError
 from datetime import datetime, timezone, timedelta
 import uuid
+import json
+import traceback
 
 from config_loader import Config
 
@@ -19,9 +22,16 @@ def verify_password(pwd: str, hash: str) -> bool:
     return PWD_CONTEXT.verify(pwd, hash)
 
 
-def create_token(user_data: dict, refresh_token_flag: bool = False) -> str:
+def create_token(user_data: dict, refresh_token_flag: bool = False) -> Optional[str]:
     payload = {}
-    payload["sub"] = user_data
+    user_data_str = ""
+    try:
+        user_data_str = json.dumps(user_data)
+    except TypeError as e:
+        print(f"Encountered the following error while serializing user data: {str(e)}")
+        traceback.print_exc()
+        return None
+    payload["sub"] = user_data_str
     payload["exp"] = int(
         (
             datetime.now(timezone.utc)
@@ -42,14 +52,27 @@ def create_token(user_data: dict, refresh_token_flag: bool = False) -> str:
     return jwt_token
 
 
-def decode_token(jwt_token: str) -> str:
-    token_data = None
+def decode_token(jwt_token: str) -> Optional[dict]:
     try:
-        token_data = jwt.decode(
+        token_payload = jwt.decode(
             jwt=jwt_token,
             key=Config.JWT_SECRET,
             algorithms=Config.JWT_ALGORITHM,
         )
+        return token_payload
     except PyJWTError as e:
         print(f"Encountered the following error while decoding token: {str(e)}")
-    return token_data
+        traceback.print_exc()
+        return None
+
+
+def is_valid_access_token(token_payload: dict) -> bool:
+    if token_payload:
+        if token_payload["is_refresh"] or (
+            not token_payload["is_refresh"] and int(datetime.now(timezone.utc).timestamp()) > token_payload["exp"]
+        ):
+            return False
+        else:
+            return True
+    else:
+        return False

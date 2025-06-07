@@ -24,9 +24,16 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+
+# @app.get("/")
+# def test():
+#     return {"message": "working"}
+
+
 # @AuthJWT.load_config()
 # def get_config():
 #     return Settings()
+
 
 version = "v1"
 app.include_router(
