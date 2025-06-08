@@ -1,11 +1,13 @@
 from typing import Optional
 from passlib.context import CryptContext
 import jwt
-from jwt.exceptions import PyJWTError
+
+# from jwt.exceptions import ExpiredSignatureError, PyJWTError
 from datetime import datetime, timezone, timedelta
 import uuid
 import json
-import traceback
+
+# import traceback
 
 from config_loader import Config
 
@@ -29,7 +31,7 @@ def create_token(user_data: dict, refresh_token_flag: bool = False) -> Optional[
         user_data_str = json.dumps(user_data)
     except TypeError as e:
         print(f"Encountered the following error while serializing user data: {str(e)}")
-        traceback.print_exc()
+        # traceback.print_exc()
         return None
     payload["sub"] = user_data_str
     payload["exp"] = int(
@@ -53,26 +55,16 @@ def create_token(user_data: dict, refresh_token_flag: bool = False) -> Optional[
 
 
 def decode_token(jwt_token: str) -> Optional[dict]:
-    try:
-        token_payload = jwt.decode(
-            jwt=jwt_token,
-            key=Config.JWT_SECRET,
-            algorithms=Config.JWT_ALGORITHM,
-        )
-        return token_payload
-    except PyJWTError as e:
-        print(f"Encountered the following error while decoding token: {str(e)}")
-        traceback.print_exc()
-        return None
-
-
-def is_valid_access_token(token_payload: dict) -> bool:
-    if token_payload:
-        if token_payload["is_refresh"] or (
-            not token_payload["is_refresh"] and int(datetime.now(timezone.utc).timestamp()) > token_payload["exp"]
-        ):
-            return False
-        else:
-            return True
-    else:
-        return False
+    # try:
+    token_payload = jwt.decode(
+        jwt=jwt_token,
+        key=Config.JWT_SECRET,
+        algorithms=Config.JWT_ALGORITHM,
+    )
+    return token_payload
+    # except ExpiredSignatureError:
+    #     raise
+    # except PyJWTError as e:
+    #     print(f"Encountered the following error while decoding token: {str(e)}")
+    #     traceback.print_exc()
+    #     return None
