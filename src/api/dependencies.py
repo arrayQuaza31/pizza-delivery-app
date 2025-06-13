@@ -1,3 +1,5 @@
+import json
+from json import JSONDecodeError
 from typing import Optional
 from starlette.requests import Request
 from fastapi import status
@@ -37,10 +39,24 @@ class TokenBearer(HTTPBearer):
                 detail="Invalid authentication credentials provided.",
             )
         self.verify_token_payload(token_payload)
+        token_payload["sub"] = self.deserialize_user_data(token_payload["sub"])
         return token_payload
 
     def verify_token_payload(self, token_payload: dict) -> None:
         raise NotImplementedError("No implementation found. Please override this method in child class.")
+
+    def deserialize_user_data(self, user_data_str: str) -> dict:
+        user_data = {}
+        try:
+            user_data = json.loads(user_data_str)
+            if not isinstance(user_data, dict):
+                raise ValueError("Payload's subject doesn't have a valid dictionary.")
+        except (JSONDecodeError, TypeError, ValueError):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid subject format in token's payload.",
+            )
+        return user_data
 
 
 class JWTAccessTokenBearer(TokenBearer):

@@ -101,6 +101,7 @@ async def list_multiple_users(
 @user_router.get("/refresh-token", status_code=status.HTTP_200_OK)
 async def generate_new_access_token(token_payload: Annotated[dict, Depends(security_refresh)]):
     user_data = token_payload["sub"]
+    # print(user_data, type(user_data))
     access_token = create_token(user_data=user_data)
     if not access_token:
         raise HTTPException(
