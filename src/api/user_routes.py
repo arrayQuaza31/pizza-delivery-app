@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from api.models import SignUpModel, LoginModel, UpdateModel, DeleteModel
 from database.db_session import get_db_session
 from database.models import User
+from database.redis import blacklist_token
 from utils.auth_utils import verify_password, create_token, decode_token
 from services.user_services import UserServices
 from api.dependencies import JWTAccessTokenBearer, JWTRefreshTokenBearer
@@ -109,3 +110,12 @@ async def generate_new_access_token(token_payload: Annotated[dict, Depends(secur
             detail="Encountered an error while creating tokens. Please try again after some time.",
         )
     return {"new_access_token": access_token}
+
+
+@user_router.get("/logout", status_code=status.HTTP_200_OK)
+async def logout(token_payload: Annotated[dict, Depends(security_access)]):
+    await blacklist_token(
+        jti=token_payload["jti"],
+        auto_expiry_timestamp=token_payload["exp"],
+    )
+    return {"message": "Logged out successfully."}

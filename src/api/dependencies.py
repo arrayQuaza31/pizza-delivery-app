@@ -10,6 +10,7 @@ from jwt.exceptions import ExpiredSignatureError, PyJWTError
 # import traceback
 
 from utils.auth_utils import decode_token
+from database.redis import blacklist_token, is_blacklisted
 
 
 class TokenBearer(HTTPBearer):
@@ -39,6 +40,11 @@ class TokenBearer(HTTPBearer):
                 detail="Invalid authentication credentials provided.",
             )
         self.verify_token_payload(token_payload)
+        if await is_blacklisted(token_payload["jti"]):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="This token is invalid or has been revoked.",
+            )
         token_payload["sub"] = self.deserialize_user_data(token_payload["sub"])
         return token_payload
 
