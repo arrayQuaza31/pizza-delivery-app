@@ -1,23 +1,23 @@
 import json
 from json import JSONDecodeError
-from typing import Optional
+from typing import Annotated
 from starlette.requests import Request
-from fastapi import status
+from fastapi import status, Depends
 from fastapi.exceptions import HTTPException
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi.security import HTTPBearer
 from jwt.exceptions import ExpiredSignatureError, PyJWTError
 
 # import traceback
 
 from utils.auth_utils import decode_token
-from database.redis import blacklist_token, is_blacklisted
+from database.redis import is_blacklisted
 
 
 class TokenBearer(HTTPBearer):
     def __init__(self, auto_error: bool = False):
         super().__init__(auto_error=auto_error)
 
-    async def __call__(self, request: Request) -> Optional[HTTPAuthorizationCredentials]:
+    async def __call__(self, request: Request) -> dict:
         auth_credentials = await super().__call__(request)
         if not auth_credentials:
             raise HTTPException(
@@ -80,4 +80,20 @@ class JWTRefreshTokenBearer(TokenBearer):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Access token found. Please provide a valid refresh token.",
+            )
+
+
+security_access = JWTAccessTokenBearer()
+security_refresh = JWTRefreshTokenBearer()
+
+
+class RoleChecker:
+    def __init__(self, allowed_roles: list[str]):
+        self.allowed_roles = allowed_roles
+
+    async def __call__(self, token_payload: Annotated[dict, Depends(security_access)]) -> None:
+        if token_payload["sub"]["role"] not in self.allowed_roles:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You do not have the necessary permissions to access this path/resource.",
             )

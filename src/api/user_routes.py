@@ -11,15 +11,12 @@ from database.models import User
 from database.redis import blacklist_token
 from utils.auth_utils import verify_password, create_token, decode_token
 from services.user_services import UserServices
-from api.dependencies import JWTAccessTokenBearer, JWTRefreshTokenBearer
+from api.dependencies import security_access, security_refresh, RoleChecker
 
 
 user_router = APIRouter()
 
 USER_SRV = UserServices()
-
-security_access = JWTAccessTokenBearer()
-security_refresh = JWTRefreshTokenBearer()
 
 
 @user_router.get("/")
@@ -47,7 +44,7 @@ async def signup(user: SignUpModel, session: Annotated[AsyncSession, Depends(get
 async def login(user: LoginModel, session: Annotated[AsyncSession, Depends(get_db_session)]):
     db_user = await USER_SRV.get_user(session=session, where_filter={"username": user.username})
     if db_user and verify_password(user.password, db_user.password):
-        user_data = db_user.to_dict(include={"id", "username"})
+        user_data = db_user.to_dict(include={"id", "username", "role"})
         access_token = create_token(user_data=user_data)
         refresh_token = create_token(user_data=user_data, refresh_token_flag=True)
         if not (access_token and refresh_token):
@@ -89,10 +86,22 @@ async def delete_account(user: DeleteModel, session: Annotated[AsyncSession, Dep
     return {"message": "Your account has been deleted."}
 
 
+@user_router.get("/account/view", status_code=status.HTTP_200_OK)
+async def view_account_details(
+    token_payload: Annotated[dict, Depends(security_access)],
+    session: Annotated[AsyncSession, Depends(get_db_session)],
+    is_allowed: Annotated[None, Depends(RoleChecker(["user", "staff", "admin"]))],
+):
+    user = await USER_SRV.get_user(session=session, where_filter={"username": token_payload["sub"]["username"]})
+    user_serialized = user.to_dict(exclude={"password"})
+    return user_serialized
+
+
 @user_router.get("/list/users", status_code=status.HTTP_200_OK)
 async def list_multiple_users(
-    session: Annotated[AsyncSession, Depends(get_db_session)],
     token_payload: Annotated[dict, Depends(security_access)],
+    session: Annotated[AsyncSession, Depends(get_db_session)],
+    is_allowed: Annotated[None, Depends(RoleChecker(["staff", "admin"]))],
 ):
     users = await USER_SRV.get_multiple_users(session=session, order_by_cols=[("created_at", 1)])
     users_serialized = [*(user.to_dict(exclude={"password"}) for user in users)]

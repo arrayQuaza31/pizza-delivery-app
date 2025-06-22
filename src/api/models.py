@@ -9,7 +9,7 @@ class SignUpModel(BaseModel):
     username: str
     email: Optional[str] = None
     password: str
-    is_staff: Optional[bool] = False
+    role: str
     is_verified: Optional[bool] = False
     is_active: Optional[bool] = True
 
@@ -28,6 +28,7 @@ class SignUpModel(BaseModel):
                     "value": {
                         "username": "johndoe",
                         "password": "securepass",
+                        "role": "user",
                     },
                 },
                 {
@@ -36,7 +37,7 @@ class SignUpModel(BaseModel):
                         "username": "johndoe",
                         "email": "johndoe@email.com",
                         "password": "securepass",
-                        "is_staff": False,
+                        "role": "user",
                         "is_verified": False,
                         "is_active": True,
                     },

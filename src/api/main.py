@@ -14,7 +14,7 @@ from database.redis import test_redis_connection, close_redis_connection
 async def lifespan(app: FastAPI):
     print("Server is starting...")
     await init_db_models()
-    await test_redis_connection
+    await test_redis_connection()
     yield
     await close_redis_connection()
     print("Server has been stopped")

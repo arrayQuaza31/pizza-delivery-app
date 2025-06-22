@@ -35,13 +35,19 @@ class CustomSerializerMixin:
 # ----- User Schemas -----
 
 
+class Roles(Enum):
+    USER = "user"
+    STAFF = "staff"
+    ADMIN = "admin"
+
+
 class User(Base, CustomSerializerMixin):
     __tablename__ = "users"
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     username = Column(String(20), unique=True, nullable=False)
     email = Column(String(254), unique=True)
     password = Column(String(100), nullable=False)
-    is_staff = Column(Boolean, default=False)
+    role = Column(ChoiceType(choices=Roles, impl=String()), default=Roles.USER)
     is_verified = Column(Boolean, default=False)
     is_active = Column(Boolean, default=True)
     created_at = Column(TIMESTAMP(timezone=True), default=lambda: datetime.now(timezone.utc))
