@@ -31,13 +31,15 @@ class UserServices:
         db_users = result.scalars().all()
         return db_users
 
-    async def update_user(self, session: AsyncSession, update_data: UpdateModel) -> Optional[User]:
-        existing_user = await self.get_user(session=session, where_filter={"username": update_data.username})
+    async def update_user(
+        self, session: AsyncSession, username: str, update_data: UpdateModel, exclude_status: bool
+    ) -> Optional[User]:
+        existing_user = await self.get_user(session=session, where_filter={"username": username})
         if not existing_user:
             return None
         # print("Data to be Updated -->", update_data.model_dump())
-        for field, value in update_data.model_dump(exclude={"username"}).items():
-            if not value:
+        for field, value in update_data.model_dump(exclude=({"is_active"} if exclude_status else None)).items():
+            if field != "is_active" and not value:
                 continue
             if field == "password":
                 value = generate_password_hash(value)

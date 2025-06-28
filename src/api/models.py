@@ -11,7 +11,7 @@ class SignUpModel(BaseModel):
     password: str
     role: str
     is_verified: Optional[bool] = False
-    is_active: Optional[bool] = True
+    is_active: Optional[bool] = False
 
     @field_validator("email", mode="before")
     def empty_str_to_none(cls, value):
@@ -39,7 +39,7 @@ class SignUpModel(BaseModel):
                         "password": "securepass",
                         "role": "user",
                         "is_verified": False,
-                        "is_active": True,
+                        "is_active": False,
                     },
                 },
             ]
@@ -61,9 +61,9 @@ class LoginModel(BaseModel):
 
 
 class UpdateModel(BaseModel):
-    username: str
     email: Optional[str] = None
     password: Optional[str] = ""
+    is_active: Optional[bool] = False
 
     @field_validator("email", mode="before")
     def empty_str_to_none(cls, value):
@@ -77,32 +77,26 @@ class UpdateModel(BaseModel):
             "examples": [
                 {
                     "summary": "Update email",
-                    "value": {
-                        "username": "johndoe",
-                        "email": "johndoe@newemail.com",
-                    },
+                    "value": {"email": "johndoe@newemail.com"},
                 },
                 {
                     "summary": "Update password",
-                    "value": {
-                        "username": "johndoe",
-                        "password": "newsecurepass",
-                    },
+                    "value": {"password": "newsecurepass"},
                 },
             ]
         }
 
 
-class DeleteModel(BaseModel):
-    username: str
+# class DeleteModel(BaseModel):
+#     username: str
 
-    class Config:
-        from_attributes = True
-        json_schema_extra = {
-            "example": {
-                "username": "johndoe",
-            }
-        }
+#     class Config:
+#         from_attributes = True
+#         json_schema_extra = {
+#             "example": {
+#                 "username": "johndoe",
+#             }
+#         }
 
 
 class Settings(BaseModel):

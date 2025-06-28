@@ -5,7 +5,7 @@ from fastapi.security import HTTPAuthorizationCredentials
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from api.models import SignUpModel, LoginModel, UpdateModel, DeleteModel
+from api.models import SignUpModel, LoginModel, UpdateModel
 from database.db_session import get_db_session
 from database.models import User
 from database.redis import blacklist_token
@@ -25,7 +25,10 @@ async def hello():
 
 
 @user_router.post("/signup", status_code=status.HTTP_201_CREATED)
-async def signup(user: SignUpModel, session: Annotated[AsyncSession, Depends(get_db_session)]):
+async def signup(
+    user: SignUpModel,
+    session: Annotated[AsyncSession, Depends(get_db_session)],
+):
     message = await USER_SRV.create_user(session=session, user=user)
     if message == "USERNAME TAKEN":
         raise HTTPException(
@@ -41,7 +44,10 @@ async def signup(user: SignUpModel, session: Annotated[AsyncSession, Depends(get
 
 
 @user_router.post("/login", status_code=status.HTTP_200_OK)
-async def login(user: LoginModel, session: Annotated[AsyncSession, Depends(get_db_session)]):
+async def login(
+    user: LoginModel,
+    session: Annotated[AsyncSession, Depends(get_db_session)],
+):
     db_user = await USER_SRV.get_user(session=session, where_filter={"username": user.username})
     if db_user and verify_password(user.password, db_user.password):
         user_data = db_user.to_dict(include={"id", "username", "role"})
@@ -52,6 +58,12 @@ async def login(user: LoginModel, session: Annotated[AsyncSession, Depends(get_d
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Encountered an error while creating tokens. Please try again after some time.",
             )
+        await USER_SRV.update_user(
+            session=session,
+            username=db_user.username,
+            update_data=UpdateModel(is_active=True),
+            exclude_status=False,
+        )
         return {
             "message": f"Welcome {db_user.username}.",
             "access_token": access_token,
@@ -65,44 +77,71 @@ async def login(user: LoginModel, session: Annotated[AsyncSession, Depends(get_d
 
 
 @user_router.patch("/account/update", status_code=status.HTTP_200_OK)
-async def update_account_details(user: UpdateModel, session: Annotated[AsyncSession, Depends(get_db_session)]):
-    updated_account = await USER_SRV.update_user(session=session, update_data=user)
+async def update_account_details(
+    user: UpdateModel,
+    token_payload: Annotated[dict, Depends(security_access)],
+    session: Annotated[AsyncSession, Depends(get_db_session)],
+):
+    username = token_payload["sub"]["username"]
+    updated_account = await USER_SRV.update_user(
+        session=session,
+        username=username,
+        update_data=user,
+        exclude_status=True,
+    )
     if not updated_account:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"No account with username '{user.username}' exists.",
+            detail=f"No account with username '{username}' exists.",
         )
-    return {"message": f"Hi {user.username}, your details have been updated."}
+    return {"message": f"Hi {username}, your details have been updated."}
 
 
 @user_router.delete("/account/delete", status_code=status.HTTP_200_OK)
-async def delete_account(user: DeleteModel, session: Annotated[AsyncSession, Depends(get_db_session)]):
-    deleted_account = await USER_SRV.delete_user(session=session, username=user.username)
+async def delete_account(
+    token_payload: Annotated[dict, Depends(security_access)],
+    session: Annotated[AsyncSession, Depends(get_db_session)],
+):
+    username = token_payload["sub"]["username"]
+    deleted_account = await USER_SRV.delete_user(session=session, username=username)
     if not deleted_account:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"No account with username '{user.username}' exists.",
+            detail=f"No account with username '{username}' exists.",
         )
+    await blacklist_token(
+        jti=token_payload["jti"],
+        auto_expiry_timestamp=token_payload["exp"],
+    )
     return {"message": "Your account has been deleted."}
 
 
-@user_router.get("/account/view", status_code=status.HTTP_200_OK)
+@user_router.get(
+    "/account/view",
+    status_code=status.HTTP_200_OK,
+    dependencies=[Depends(RoleChecker(["user", "staff", "admin"]))],
+)
 async def view_account_details(
     token_payload: Annotated[dict, Depends(security_access)],
     session: Annotated[AsyncSession, Depends(get_db_session)],
-    is_allowed: Annotated[None, Depends(RoleChecker(["user", "staff", "admin"]))],
 ):
-    user = await USER_SRV.get_user(session=session, where_filter={"username": token_payload["sub"]["username"]})
+    username = token_payload["sub"]["username"]
+    user = await USER_SRV.get_user(session=session, where_filter={"username": username})
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"No account with username '{username}' exists.",
+        )
     user_serialized = user.to_dict(exclude={"password"})
     return user_serialized
 
 
-@user_router.get("/list/users", status_code=status.HTTP_200_OK)
-async def list_multiple_users(
-    token_payload: Annotated[dict, Depends(security_access)],
-    session: Annotated[AsyncSession, Depends(get_db_session)],
-    is_allowed: Annotated[None, Depends(RoleChecker(["staff", "admin"]))],
-):
+@user_router.get(
+    "/list/users",
+    status_code=status.HTTP_200_OK,
+    dependencies=[Depends(security_access), Depends(RoleChecker(["staff", "admin"]))],
+)
+async def list_multiple_users(session: Annotated[AsyncSession, Depends(get_db_session)]):
     users = await USER_SRV.get_multiple_users(session=session, order_by_cols=[("created_at", 1)])
     users_serialized = [*(user.to_dict(exclude={"password"}) for user in users)]
     return users_serialized
@@ -122,9 +161,18 @@ async def generate_new_access_token(token_payload: Annotated[dict, Depends(secur
 
 
 @user_router.get("/logout", status_code=status.HTTP_200_OK)
-async def logout(token_payload: Annotated[dict, Depends(security_access)]):
+async def logout(
+    session: Annotated[AsyncSession, Depends(get_db_session)],
+    token_payload: Annotated[dict, Depends(security_access)],
+):
     await blacklist_token(
         jti=token_payload["jti"],
         auto_expiry_timestamp=token_payload["exp"],
+    )
+    await USER_SRV.update_user(
+        session=session,
+        username=token_payload["sub"]["username"],
+        update_data=UpdateModel(is_active=False),
+        exclude_status=False,
     )
     return {"message": "Logged out successfully."}
